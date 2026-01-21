@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_URL="https://raw.githubusercontent.com/AlcyoneLabs/simple-logger/main/skill-forge"
+# === CONFIGURATION ===
+REPO_URL="https://github.com/Alcyone-Labs/simple-logger.git"
 SKILL_NAME="simple-logger-usage"
+# =====================
 
 usage() {
   cat <<EOF
 Usage: $0 [OPTIONS]
 
-Install the ${SKILL_NAME} skill for OpenCode, Gemini CLI, Claude, and FactoryAI Droid.
+Install the ${SKILL_NAME} skill for OpenCode, Gemini CLI, Claude, FactoryAI Droid, Agents, and Antigravity.
 
 Options:
   -g, --global    Install globally (user scope) [default]
@@ -17,7 +19,7 @@ Options:
   -h, --help      Show this help message
 
 Examples:
-  curl -fsSL ${REPO_URL}/install.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/Alcyone-Labs/simple-logger/main/skill-forge/install.sh | bash
   ./install.sh --self --local
 EOF
 }
@@ -27,8 +29,8 @@ validate_env() {
     echo "Critical Error: SKILL_NAME is unset." >&2
     exit 1
   fi
-  if [[ "${SKILL_NAME}" == *"/"* ]] || [[ "${SKILL_NAME}" == *" "* ]]; then
-    echo "Critical Error: SKILL_NAME contains illegal characters." >&2
+  if [[ "${SKILL_NAME}" == *"/"* ]] || [[ "${SKILL_NAME}" == *" "* ]] || [[ "${SKILL_NAME}" == ".." ]]; then
+    echo "Critical Error: SKILL_NAME contains illegal characters or path separators." >&2
     exit 1
   fi
 }
@@ -59,14 +61,7 @@ main() {
     src_dir=$(mktemp -d)
     trap "rm -rf '$src_dir'" EXIT
     echo "Fetching skill from ${REPO_URL}..."
-    mkdir -p "${src_dir}/skill/${SKILL_NAME}" "${src_dir}/command"
-    curl -fsSL "${REPO_URL}/skill/${SKILL_NAME}/SKILL.md" -o "${src_dir}/skill/${SKILL_NAME}/SKILL.md"
-    curl -fsSL "${REPO_URL}/skill/${SKILL_NAME}/references/usage/README.md" -o "${src_dir}/skill/${SKILL_NAME}/references/usage/README.md"
-    curl -fsSL "${REPO_URL}/skill/${SKILL_NAME}/references/usage/api.md" -o "${src_dir}/skill/${SKILL_NAME}/references/usage/api.md"
-    curl -fsSL "${REPO_URL}/skill/${SKILL_NAME}/references/usage/configuration.md" -o "${src_dir}/skill/${SKILL_NAME}/references/usage/configuration.md"
-    curl -fsSL "${REPO_URL}/skill/${SKILL_NAME}/references/usage/patterns.md" -o "${src_dir}/skill/${SKILL_NAME}/references/usage/patterns.md"
-    curl -fsSL "${REPO_URL}/skill/${SKILL_NAME}/references/usage/gotchas.md" -o "${src_dir}/skill/${SKILL_NAME}/references/usage/gotchas.md"
-    curl -fsSL "${REPO_URL}/command/${SKILL_NAME}.md" -o "${src_dir}/command/${SKILL_NAME}.md"
+    git clone --depth 1 --quiet "$REPO_URL" "$src_dir"
   fi
 
   install_to() {
@@ -76,7 +71,7 @@ main() {
 
     local target_skill_dir="${base_dir}/${SKILL_NAME}"
 
-    if [[ -z "$target_skill_dir" ]] || [[ "$target_skill_dir" == "/" ]]; then
+    if [[ -z "$target_skill_dir" ]] || [[ "$target_skill_dir" == "/" ]] || [[ "$target_skill_dir" == "$HOME" ]] || [[ "$target_skill_dir" == "$HOME/" ]]; then
       echo "Safety Error: Target path is restricted: $target_skill_dir" >&2
       return 1
     fi
@@ -91,7 +86,7 @@ main() {
             rm -rf "$target_skill_dir"
             ;;
           *)
-            echo "Safety Error: Target directory does not end in ${SKILL_NAME}." >&2
+            echo "Safety Error: Target directory does not end in ${SKILL_NAME}. Aborting deletion." >&2
             exit 1
             ;;
         esac
@@ -106,6 +101,10 @@ main() {
       if [[ -n "$command_dir" ]]; then
         mkdir -p "$command_dir"
         local cmd_path="${command_dir}/${SKILL_NAME}.md"
+        if [[ "$cmd_path" == "/" ]] || [[ "$cmd_path" == "$HOME" ]]; then
+          echo "Safety Error: Dangerous command path: $cmd_path" >&2
+          exit 1
+        fi
         rm -f "$cmd_path"
         cp "${src_dir}/command/${SKILL_NAME}.md" "$cmd_path"
         echo "  Command installed to: ${cmd_path}"
@@ -120,11 +119,15 @@ main() {
     install_to "Gemini CLI (Global)" "${HOME}/.gemini/skills"
     install_to "Claude (Global)" "${HOME}/.claude/skills"
     install_to "FactoryAI Droid (Global)" "${HOME}/.factory/skills"
+    install_to "Agents (Global)" "${HOME}/.config/agents/skills"
+    install_to "Antigravity (Global)" "${HOME}/.antigravity/skills"
   else
     install_to "OpenCode (Local)" ".opencode/skills" ".opencode/commands"
     install_to "Gemini CLI (Local)" ".gemini/skills"
     install_to "Claude (Local)" ".claude/skills"
     install_to "FactoryAI Droid (Local)" ".factory/skills"
+    install_to "Agents (Local)" ".agents/skills"
+    install_to "Antigravity (Local)" ".antigravity/skills"
   fi
 
   echo "Done."
