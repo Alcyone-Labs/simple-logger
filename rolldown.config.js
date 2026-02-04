@@ -12,7 +12,12 @@ export default defineConfig({
       format: 'cjs',
       file: 'dist/index.cjs',
       sourcemap: true,
+    },
+    {
+      format: 'iife',
+      file: 'dist/index.iife.js',
+      sourcemap: true,
+      name: 'SimpleLogger',
     }
   ],
-  external: ['zod'],
 });

@@ -13,9 +13,20 @@ export { ConsoleTransport, RemoteTransport, PinoBridgeTransport } from "./transp
 /**
  * Singleton Logger Class.
  * Manages active transports and handles message dispatch.
+ * 
+ * NOTE: This class is designed to be safe for Chrome Extension MV3 service workers.
+ * - Uses lazy initialization for transports
+ * - Defensive against missing console in strict contexts
  */
 class LoggerSingleton implements ILogger {
-  private transports: ITransport[] = [new ConsoleTransport("info")];
+  private transports: ITransport[] | null = null;
+
+  private getTransports(): ITransport[] {
+    if (!this.transports) {
+      this.transports = [new ConsoleTransport("info")];
+    }
+    return this.transports;
+  }
 
   /**
    * Replace all active transports.
@@ -28,7 +39,7 @@ class LoggerSingleton implements ILogger {
    * Add a new transport to the active list.
    */
   public addTransport(transport: ITransport) {
-    this.transports.push(transport);
+    this.getTransports().push(transport);
   }
 
   /**
@@ -38,7 +49,7 @@ class LoggerSingleton implements ILogger {
   private dispatch(level: TLogLevel, data: TLog, metadata?: any) {
     const finalData = metadata ? this.mergeMetadata(data, metadata) : data;
 
-    for (const t of this.transports) {
+    for (const t of this.getTransports()) {
       switch (level) {
         case "info": t.info(finalData); break;
         case "debug": t.debug(finalData); break;

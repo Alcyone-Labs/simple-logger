@@ -1,20 +1,40 @@
 import { type ITransport, type TLog, type TLogLevel } from "./types";
 import { shouldLog } from "./utils";
 
+/**
+ * Safe console accessor that works in all JavaScript contexts including
+ * Chrome Extension MV3 service workers.
+ */
+const safeConsole = (() => {
+  try {
+    return typeof console !== "undefined" ? console : undefined;
+  } catch {
+    return undefined;
+  }
+})();
+
 export class ConsoleTransport implements ITransport {
   constructor(public level: TLogLevel = "info") {}
 
   info(data: TLog) {
-    if (shouldLog(this.level, "info")) console.info(data.message, data);
+    if (shouldLog(this.level, "info") && safeConsole?.info) {
+      safeConsole.info(data.message, data);
+    }
   }
   debug(data: TLog) {
-    if (shouldLog(this.level, "debug")) console.debug(data.message, data);
+    if (shouldLog(this.level, "debug") && safeConsole?.debug) {
+      safeConsole.debug(data.message, data);
+    }
   }
   warn(data: TLog) {
-    if (shouldLog(this.level, "warn")) console.warn(data.message, data);
+    if (shouldLog(this.level, "warn") && safeConsole?.warn) {
+      safeConsole.warn(data.message, data);
+    }
   }
   error(data: TLog) {
-    if (shouldLog(this.level, "error")) console.error(data.message, data);
+    if (shouldLog(this.level, "error") && safeConsole?.error) {
+      safeConsole.error(data.message, data);
+    }
   }
 }
 
